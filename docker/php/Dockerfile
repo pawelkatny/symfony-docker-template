@@ -11,9 +11,6 @@ ARG WWW_DATA=""
 
 COPY "./docker/php/config/php.${BUILD_TYPE}.ini" "${PHP_INI_DIR}/php.ini"
 
-
-
-
 RUN if [ "${WWW_DATA}" != "" ]; then					\
     apk add --update --no-cache shadow &&				\
     groupmod --gid ${WWW_DATA#*:} www-data &&				\
