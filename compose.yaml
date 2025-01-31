@@ -1,0 +1,138 @@
+
+services:
+  nginx:
+    build:
+      dockerfile: ./docker/nginx/Dockerfile
+      args:
+        NGINX_IMAGE: ${NGINX_IMAGE:-alpine3.20-slim}
+        BUILD_TYPE: ${APP_ENV:-dev}
+    container_name: symfony_docker_nginx
+    restart: always
+    ports:
+      - ${NGINX_PORT:-8080}:${APP_PORT:-80}
+    volumes:
+      - ./:/var/www/html
+    depends_on:
+      - php
+    networks:
+      - symfony-docker-network
+
+  php:
+    build:
+      dockerfile: ./docker/php/Dockerfile
+      args:
+        BUILD_TYPE: ${APP_ENV:-dev}
+        PHP_IMAGE: ${PHP_IMAGE:-8.4.3-fpm-alpine3.20}
+        XDEBUG_ON: ${XDEBUG_ON:-true}
+        WWW_DATA: "${UID:-1000}:${GID:-1000}"
+        USER: "www-data"
+    environment:
+      XDEBUG_MODE: "${XDEBUG_MODE}"
+    container_name: symfony_docker_php
+    restart: always
+    volumes:
+      - ./:/var/www/html
+    networks:
+      - symfony-docker-network
+
+  postgres:
+    image: postgres:${POSTGRES_VERSION:-16}-alpine
+    container_name: symfony_docker_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-!ChangeMe!}
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-d", "${POSTGRES_DB:-app}", "-U", "${POSTGRES_USER:-app}"]
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    volumes:
+      - pg_db_data:/var/lib/postgresql/data:rw
+    networks: 
+      - symfony-docker-network
+
+  mongodb:
+    image: mongo:latest
+    container_name: symfony_docker_mongo
+    restart: always
+    profiles: [all, mongofull, mongodb]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: "${MONGO_USER:-admin}"
+      MONGO_INITDB_ROOT_PASSWORD: "${MONGO_PASSWORD:-password}"
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    networks:
+      - symfony-docker-network
+
+  redis:
+    image: redis:latest
+    container_name: symfony_docker_redis
+    restart: always
+    profiles: [all, redis]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - symfony-docker-network
+
+  redisinsight:
+    image: redislabs/redisinsight:latest
+    container_name: symfony_docker_redisinsight
+    restart: always
+    profiles: [all, admin, redisinsight]
+    ports:
+      - "5540:5540"
+    volumes:
+      - redisinsight_data:/db
+    networks:
+      - symfony-docker-network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: symfony_docker_pgadmin
+    restart: always
+    profiles: [all, admin, pgadmin]
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@test.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-password}
+    ports:
+      - "8081:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - symfony-docker-network
+
+  mongoexpress:
+    image: mongo-express:latest
+    container_name: symfony_docker_mongoexpress
+    restart: always
+    profiles: [all, admin, mongofull, mongoexpress]
+    environment:
+      ME_CONFIG_MONGODB_URL: "mongodb://${MONGO_USER:-admin}:${MONGO_PASSWORD:-password}@mongodb:27017"
+    ports:
+      - "8082:8081"
+    networks: 
+      - symfony-docker-network
+
+volumes:
+  pg_db_data:
+    driver: local
+  redis_data:
+    driver: local
+  redisinsight_data:
+    driver: local
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
+  pgadmin_data:
+    driver: local
+
+networks:
+  symfony-docker-network:
