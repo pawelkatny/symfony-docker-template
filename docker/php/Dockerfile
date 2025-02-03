@@ -2,7 +2,7 @@ ARG PHP_IMAGE=fpm-alpine
 FROM php:${PHP_IMAGE}
 
 COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
-RUN install-php-extensions @composer-2.7.1 apcu amqp bcmath exif gd intl mbstring opcache pcntl pdo pdo_pgsql zip mongodb redis
+RUN install-php-extensions @composer-2.7.1 apcu amqp bcmath exif gd intl mbstring opcache pcntl pdo pgsql pdo_pgsql zip mongodb redis
 
 ARG BUILD_TYPE=prod
 ARG PHP_CONFIG_DIR="/usr/local/etc/php/conf.d"
